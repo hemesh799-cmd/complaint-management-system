@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Complaint Management System - College DBMS Project</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Header -->
+        <header class="main-header">
+            <div class="logo-area">
+                <svg class="header-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                    <path d="m9 12 2 2 4-4"/>
+                </svg>
+                <div>
+                    <h1>COMPLAINT MANAGEMENT SYSTEM</h1>
+                    <p class="subtitle">College Complaint Registration & Tracking System (DBMS Mini Project)</p>
+                </div>
+            </div>
+            <div class="dbms-badge">SQLite DBMS</div>
+        </header>
+
+        <!-- Dashboard Stats -->
+        <section class="dashboard-section">
+            <div class="stat-card blue">
+                <div class="stat-icon">👥</div>
+                <div class="stat-info">
+                    <span class="stat-label">Total Users</span>
+                    <span class="stat-value" id="stat-users">0</span>
+                </div>
+            </div>
+
+            <div class="stat-card purple">
+                <div class="stat-icon">🏢</div>
+                <div class="stat-info">
+                    <span class="stat-label">Total Departments</span>
+                    <span class="stat-value" id="stat-departments">0</span>
+                </div>
+            </div>
+
+            <div class="stat-card orange">
+                <div class="stat-icon">📋</div>
+                <div class="stat-info">
+                    <span class="stat-label">Total Complaints</span>
+                    <span class="stat-value" id="stat-complaints">0</span>
+                </div>
+            </div>
+
+            <div class="stat-card green">
+                <div class="stat-icon">✅</div>
+                <div class="stat-info">
+                    <span class="stat-label">Resolved Complaints</span>
+                    <span class="stat-value" id="stat-resolved">0</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- Global Toast / Alert Banner -->
+        <div id="toast-message" class="toast hidden"></div>
+
+        <!-- Form Cards Grid -->
+        <main class="forms-grid">
+
+            <!-- SECTION 1: USER DETAILS -->
+            <section class="card">
+                <div class="card-header">
+                    <h2><span class="icon">👤</span> USER DETAILS</h2>
+                </div>
+                <form id="user-form" onsubmit="handleUserSubmit(event)">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="user-first-name">First Name <span class="required">*</span></label>
+                            <input type="text" id="user-first-name" placeholder="e.g. Rahul" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="user-last-name">Last Name <span class="required">*</span></label>
+                            <input type="text" id="user-last-name" placeholder="e.g. Kumar" required>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="user-email">Email Address <span class="required">*</span></label>
+                        <input type="email" id="user-email" placeholder="e.g. rahul@college.edu" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="user-phone">Phone Number <span class="required">*</span></label>
+                        <input type="tel" id="user-phone" placeholder="e.g. 9876543210" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Save User</button>
+                </form>
+                <div id="user-result" class="result-box hidden"></div>
+            </section>
+
+            <!-- SECTION 2: DEPARTMENT DETAILS -->
+            <section class="card">
+                <div class="card-header">
+                    <h2><span class="icon">🏢</span> DEPARTMENT DETAILS</h2>
+                </div>
+                <form id="department-form" onsubmit="handleDeptSubmit(event)">
+                    <div class="form-group">
+                        <label for="dept-name">Department Name <span class="required">*</span></label>
+                        <input type="text" id="dept-name" placeholder="e.g. IT Department" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="dept-location">Location</label>
+                        <input type="text" id="dept-location" placeholder="e.g. Block A, 2nd Floor">
+                    </div>
+                    <div class="form-group">
+                        <label for="dept-service">Service Area</label>
+                        <input type="text" id="dept-service" placeholder="e.g. Computer & Network Services">
+                    </div>
+                    <button type="submit" class="btn btn-primary">Save Department</button>
+                </form>
+                <div id="dept-result" class="result-box hidden"></div>
+            </section>
+
+            <!-- SECTION 3: COMPLAINT DETAILS -->
+            <section class="card">
+                <div class="card-header">
+                    <h2><span class="icon">📝</span> COMPLAINT DETAILS</h2>
+                </div>
+                <form id="complaint-form" onsubmit="handleComplaintSubmit(event)">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="comp-user-id">User ID <span class="required">*</span></label>
+                            <input type="number" id="comp-user-id" min="1" placeholder="e.g. 1" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="comp-dept-id">Department ID <span class="required">*</span></label>
+                            <input type="number" id="comp-dept-id" min="1" placeholder="e.g. 1" required>
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="comp-state">Complaint State <span class="required">*</span></label>
+                            <select id="comp-state" required>
+                                <option value="Pending" selected>Pending</option>
+                                <option value="In Progress">In Progress</option>
+                                <option value="Resolved">Resolved</option>
+                                <option value="Rejected">Rejected</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="comp-category">Category <span class="required">*</span></label>
+                            <select id="comp-category" required>
+                                <option value="" disabled selected>Select Category</option>
+                                <option value="Technical">Technical</option>
+                                <option value="Academic">Academic</option>
+                                <option value="Hostel">Hostel</option>
+                                <option value="Transport">Transport</option>
+                                <option value="Library">Library</option>
+                                <option value="Infrastructure">Infrastructure</option>
+                                <option value="Fees">Fees</option>
+                                <option value="Other">Other</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="comp-description">Description <span class="required">*</span></label>
+                        <textarea id="comp-description" rows="3" placeholder="Describe the issue in detail..." required></textarea>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Submit Complaint</button>
+                </form>
+                <div id="complaint-result" class="result-box hidden"></div>
+            </section>
+
+            <!-- SECTION 4: UPDATE COMPLAINT STATUS -->
+            <section class="card">
+                <div class="card-header">
+                    <h2><span class="icon">🔄</span> UPDATE COMPLAINT STATUS</h2>
+                </div>
+                <form id="status-form" onsubmit="handleStatusSubmit(event)">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="status-comp-id">Complaint ID <span class="required">*</span></label>
+                            <input type="number" id="status-comp-id" min="1" placeholder="e.g. 1" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="status-state">Status <span class="required">*</span></label>
+                            <select id="status-state" required>
+                                <option value="Pending">Pending</option>
+                                <option value="In Progress" selected>In Progress</option>
+                                <option value="Resolved">Resolved</option>
+                                <option value="Rejected">Rejected</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="status-date">Resolved Date</label>
+                            <input type="date" id="status-date">
+                        </div>
+                        <div class="form-group">
+                            <label for="status-time">Resolution Time</label>
+                            <input type="text" id="status-time" placeholder="e.g. 2 hours / 1 day">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="status-remarks">Remarks</label>
+                        <input type="text" id="status-remarks" placeholder="e.g. Assigned to technical team">
+                    </div>
+                    <button type="submit" class="btn btn-primary">Update Status</button>
+                </form>
+                <div id="status-result" class="result-box hidden"></div>
+            </section>
+
+        </main>
+
+        <!-- VIEW RECORDS SECTION -->
+        <section class="card records-section">
+            <div class="records-header">
+                <h2><span class="icon">📊</span> VIEW RECORDS (SQL JOIN & Queries)</h2>
+                <p class="records-subtitle">Click a button below to view records fetched directly from SQLite via Express REST APIs</p>
+            </div>
+
+            <div class="button-group">
+                <button class="btn btn-secondary" onclick="loadUsers()">View Users</button>
+                <button class="btn btn-secondary" onclick="loadDepartments()">View Departments</button>
+                <button class="btn btn-secondary" onclick="loadComplaints()">View Complaints</button>
+                <button class="btn btn-secondary" onclick="loadStatuses()">View Complaint Status</button>
+            </div>
+
+            <div class="table-container">
+                <div id="table-info" class="table-info-bar">
+                    <span id="table-title">Select a category above to load records</span>
+                    <span id="table-count" class="badge-count"></span>
+                </div>
+                <div class="table-scroll">
+                    <table id="records-table">
+                        <thead id="table-head">
+                            <tr>
+                                <th>Info</th>
+                            </tr>
+                        </thead>
+                        <tbody id="table-body">
+                            <tr>
+                                <td class="empty-cell">No records selected. Click any button above to fetch data.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- Footer -->
+        <footer class="main-footer">
+            <p>DBMS Project &bull; Complaint Management System &bull; Node.js + Express + SQLite</p>
+        </footer>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
