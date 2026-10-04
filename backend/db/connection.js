@@ -1,14 +1,26 @@
 const { Pool } = require('pg');
 require('dotenv').config();
 
-const pool = new Pool({
-  user: process.env.DB_USER || 'postgres',
-  host: process.env.DB_HOST || 'localhost',
-  database: process.env.DB_NAME || 'complaint_management',
-  password: process.env.DB_PASSWORD || 'postgres',
-  port: parseInt(process.env.DB_PORT || '5432', 10),
-  connectionTimeoutMillis: 2000,
-});
+const useConnectionString = Boolean(process.env.DATABASE_URL);
+
+const poolConfig = useConnectionString
+  ? {
+      connectionString: process.env.DATABASE_URL,
+      ssl: {
+        rejectUnauthorized: false,
+      },
+      connectionTimeoutMillis: 5000,
+    }
+  : {
+      user: process.env.DB_USER || 'postgres',
+      host: process.env.DB_HOST || 'localhost',
+      database: process.env.DB_NAME || 'complaint_management',
+      password: process.env.DB_PASSWORD || 'postgres',
+      port: parseInt(process.env.DB_PORT || '5432', 10),
+      connectionTimeoutMillis: 2000,
+    };
+
+const pool = new Pool(poolConfig);
 
 let isPgConnected = false;
 
@@ -17,13 +29,17 @@ pool.connect((err, client, release) => {
   if (err) {
     isPgConnected = false;
     console.log('--------------------------------------------------');
-    console.log('⚠️ PostgreSQL local server on port 5432 is unreachable or credentials invalid.');
+    console.log('⚠️ PostgreSQL local/cloud server is unreachable or credentials invalid.');
     console.log('⚡ Switched to resilient In-Memory Relational Engine loaded with seed data!');
     console.log('✅ All CRUD actions, JOINs, and Database Explorer will function 100% seamlessly!');
     console.log('--------------------------------------------------');
   } else {
     isPgConnected = true;
-    console.log(`✅ Successfully connected to PostgreSQL database: "${process.env.DB_NAME || 'complaint_management'}" at ${process.env.DB_HOST || 'localhost'}:${process.env.DB_PORT || '5432'}`);
+    if (useConnectionString) {
+      console.log('✅ Successfully connected to cloud PostgreSQL database via DATABASE_URL (SSL enabled)');
+    } else {
+      console.log(`✅ Successfully connected to local PostgreSQL database: "${process.env.DB_NAME || 'complaint_management'}" at ${process.env.DB_HOST || 'localhost'}:${process.env.DB_PORT || '5432'}`);
+    }
     release();
   }
 });
