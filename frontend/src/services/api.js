@@ -1,47 +1,47 @@
 import axios from 'axios';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
-
 const api = axios.create({
-  baseURL: API_BASE_URL,
+  baseURL: 'http://localhost:5000/api',
   headers: {
-    'Content-Type': 'application/json'
-  }
+    'Content-Type': 'application/json',
+  },
 });
 
-// Response Interceptor for Error Handling
-api.interceptors.response.use(
-  (response) => response.data,
-  (error) => {
-    const customError = {
-      message: error.response?.data?.message || error.message || 'Network/Server Error',
-      status: error.response?.status || 500
-    };
-    return Promise.reject(customError);
-  }
-);
+// Dashboard Service
+export const getDashboardData = () => api.get('/dashboard');
 
-// ----------------- Complaint APIs -----------------
-export const getComplaints = (params = {}) => api.get('/complaints', { params });
-export const getComplaintById = (id) => api.get(`/complaints/${id}`);
-export const createComplaint = (data) => api.post('/complaints', data);
-export const updateComplaint = (id, data) => api.put(`/complaints/${id}`, data);
-export const deleteComplaint = (id) => api.delete(`/complaints/${id}`);
-
-// ----------------- User APIs -----------------
+// Users Service
 export const getUsers = () => api.get('/users');
 export const getUserById = (id) => api.get(`/users/${id}`);
-export const createUser = (data) => api.post('/users', data);
+export const createUser = (userData) => api.post('/users', userData);
+export const updateUser = (id, userData) => api.put(`/users/${id}`, userData);
+export const deleteUser = (id) => api.delete(`/users/${id}`);
 
-// ----------------- Department APIs -----------------
+// Departments Service
 export const getDepartments = () => api.get('/departments');
 export const getDepartmentById = (id) => api.get(`/departments/${id}`);
-export const createDepartment = (data) => api.post('/departments', data);
+export const createDepartment = (deptData) => api.post('/departments', deptData);
+export const updateDepartment = (id, deptData) => api.put(`/departments/${id}`, deptData);
+export const deleteDepartment = (id) => api.delete(`/departments/${id}`);
 
-// ----------------- Status APIs -----------------
-export const getStatuses = () => api.get('/statuses');
+// Complaints Service
+export const getComplaints = () => api.get('/complaints');
+export const getComplaintById = (id) => api.get(`/complaints/${id}`);
+export const createComplaint = (complaintData) => api.post('/complaints', complaintData);
+export const updateComplaint = (id, complaintData) => api.put(`/complaints/${id}`, complaintData);
+export const deleteComplaint = (id) => api.delete(`/complaints/${id}`);
 
-// ----------------- Dashboard API -----------------
-export const getDashboardStats = () => api.get('/dashboard/stats');
+// Statuses Service
+export const getComplaintStatuses = (complaintId) => api.get(`/complaints/${complaintId}/statuses`);
+export const addComplaintStatus = (complaintId, statusData) => api.post(`/complaints/${complaintId}/statuses`, statusData);
+export const updateStatus = (statusId, statusData) => api.put(`/statuses/${statusId}`, statusData);
+
+// Database / SQL Tables Explorer Service (Mandatory Requirement)
+export const getDatabaseTablesInfo = () => api.get('/database/tables');
+export const getDatabaseUsersTable = () => api.get('/database/users');
+export const getDatabaseDepartmentsTable = () => api.get('/database/departments');
+export const getDatabaseComplaintsTable = () => api.get('/database/complaints');
+export const getDatabaseStatusesTable = () => api.get('/database/statuses');
+export const getDatabaseTableSchema = (tableName) => api.get(`/database/schema/${tableName}`);
 
 export default api;

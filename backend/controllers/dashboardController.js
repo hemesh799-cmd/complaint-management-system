@@ -1,114 +1,72 @@
-const db = require('../db/db');
+const db = require('../db/connection');
 
-// GET /api/dashboard/stats
-async function getDashboardStats(req, res, next) {
+// Get dashboard aggregate statistics and recent complaints
+const getDashboardData = async (req, res, next) => {
   try {
-    // 1. Total Users
-    const usersCountRes = await db.query('SELECT COUNT(*)::int AS count FROM users');
-    const totalUsers = usersCountRes.rows[0].count;
+    // 1. Total Users Count
+    const usersCountRes = await db.query('SELECT COUNT(*) AS count FROM users');
+    const totalUsers = parseInt(usersCountRes.rows[0].count, 10);
 
-    // 2. Total Complaints
-    const complaintsCountRes = await db.query('SELECT COUNT(*)::int AS count FROM complaints');
-    const totalComplaints = complaintsCountRes.rows[0].count;
+    // 2. Total Complaints Count
+    const complaintsCountRes = await db.query('SELECT COUNT(*) AS count FROM complaints');
+    const totalComplaints = parseInt(complaintsCountRes.rows[0].count, 10);
 
-    // 3. Status breakdown
-    const statusCountsRes = await db.query(`
-      SELECT 
-        s.status,
-        COUNT(c.complaint_id)::int AS count
-      FROM statuses s
-      LEFT JOIN complaints c ON s.status_id = c.status_id
-      GROUP BY s.status, s.status_id
-      ORDER BY s.status_id ASC
-    `);
+    // 3. Pending Complaints Count
+    const pendingRes = await db.query("SELECT COUNT(*) AS count FROM complaints WHERE complaint_state = 'Pending'");
+    const pendingComplaints = parseInt(pendingRes.rows[0].count, 10);
 
-    let pendingComplaints = 0;
-    let inProgressComplaints = 0;
-    let resolvedComplaints = 0;
-    let rejectedComplaints = 0;
+    // 4. In Progress Complaints Count
+    const inProgressRes = await db.query("SELECT COUNT(*) AS count FROM complaints WHERE complaint_state = 'In Progress'");
+    const inProgressComplaints = parseInt(inProgressRes.rows[0].count, 10);
 
-    statusCountsRes.rows.forEach(row => {
-      const s = row.status.toLowerCase();
-      if (s === 'pending') pendingComplaints = row.count;
-      else if (s === 'in progress') inProgressComplaints = row.count;
-      else if (s === 'resolved') resolvedComplaints = row.count;
-      else if (s === 'rejected') rejectedComplaints = row.count;
-    });
+    // 5. Resolved Complaints Count
+    const resolvedRes = await db.query("SELECT COUNT(*) AS count FROM complaints WHERE complaint_state = 'Resolved'");
+    const resolvedComplaints = parseInt(resolvedRes.rows[0].count, 10);
 
-    // 4. Department breakdown
-    const deptStatsRes = await db.query(`
-      SELECT 
-        d.department_name,
-        COUNT(c.complaint_id)::int AS count
-      FROM departments d
-      LEFT JOIN complaints c ON d.department_id = c.department_id
-      GROUP BY d.department_id, d.department_name
-      ORDER BY count DESC
-    `);
+    // 6. Rejected Complaints Count
+    const rejectedRes = await db.query("SELECT COUNT(*) AS count FROM complaints WHERE complaint_state = 'Rejected'");
+    const rejectedComplaints = parseInt(rejectedRes.rows[0].count, 10);
 
-    // 5. Category breakdown
-    const categoryStatsRes = await db.query(`
-      SELECT 
-        category,
-        COUNT(complaint_id)::int AS count
-      FROM complaints
-      GROUP BY category
-      ORDER BY count DESC
-      LIMIT 6
-    `);
+    // 7. Total Departments Count
+    const deptsCountRes = await db.query('SELECT COUNT(*) AS count FROM departments');
+    const totalDepartments = parseInt(deptsCountRes.rows[0].count, 10);
 
-    // 6. Recent Complaints
-    const recentRes = await db.query(`
+    // 8. Recent Complaints (Last 5 complaints)
+    const recentComplaintsQuery = `
       SELECT 
         c.complaint_id,
-        (u.first_name || ' ' || u.last_name) AS user_name,
+        u.first_name || ' ' || u.last_name AS user_name,
+        COALESCE(d.department_name, 'Unassigned') AS department_name,
         c.category,
-        d.department_name,
-        s.status,
-        c.complaint_date
+        c.description,
+        c.complaint_state,
+        c.created_at
       FROM complaints c
       JOIN users u ON c.user_id = u.user_id
-      JOIN departments d ON c.department_id = d.department_id
-      JOIN statuses s ON c.status_id = s.status_id
-      ORDER BY c.complaint_id DESC
-      LIMIT 5
-    `);
-
-    // 7. Recent Resolved Complaints
-    const resolvedRes = await db.query(`
-      SELECT 
-        c.complaint_id,
-        (u.first_name || ' ' || u.last_name) AS user_name,
-        c.category,
-        d.department_name,
-        c.remarks,
-        c.resolved_date,
-        ROUND((EXTRACT(EPOCH FROM (c.resolved_date - c.complaint_date)) / 3600.0)::numeric, 1) || ' hours' AS resolution_time
-      FROM complaints c
-      JOIN users u ON c.user_id = u.user_id
-      JOIN departments d ON c.department_id = d.department_id
-      WHERE c.resolved_date IS NOT NULL
-      ORDER BY c.resolved_date DESC
-      LIMIT 5
-    `);
+      LEFT JOIN departments d ON c.department_id = d.department_id
+      ORDER BY c.created_at DESC
+      LIMIT 5;
+    `;
+    const recentComplaintsRes = await db.query(recentComplaintsQuery);
 
     res.json({
-      totalUsers,
-      totalComplaints,
-      pendingComplaints,
-      inProgressComplaints,
-      resolvedComplaints,
-      rejectedComplaints,
-      departmentStats: deptStatsRes.rows,
-      categoryStats: categoryStatsRes.rows,
-      recentComplaints: recentRes.rows,
-      recentResolvedComplaints: resolvedRes.rows
+      success: true,
+      stats: {
+        total_users: totalUsers,
+        total_complaints: totalComplaints,
+        pending_complaints: pendingComplaints,
+        in_progress_complaints: inProgressComplaints,
+        resolved_complaints: resolvedComplaints,
+        rejected_complaints: rejectedComplaints,
+        total_departments: totalDepartments,
+      },
+      recentComplaints: recentComplaintsRes.rows,
     });
-  } catch (err) {
-    next(err);
+  } catch (error) {
+    next(error);
   }
-}
+};
 
 module.exports = {
-  getDashboardStats
+  getDashboardData,
 };

@@ -1,159 +1,287 @@
-# Online Complaint Management System
+# Complaint Management System — College DBMS & Full-Stack Project
 
-A full-stack college DBMS project for managing, assigning, tracking, and resolving student & faculty complaints in an educational institution.
+A complete, full-stack, database-driven **Complaint Management System** built with **React (Vite)**, **Express REST API**, and **PostgreSQL**.
 
-Every single change made in the **React Frontend** actually performs an `INSERT`, `UPDATE`, or `DELETE` query in the **PostgreSQL Database** through the **Express REST API**.
+Every change made through the React frontend (Creating, Updating, Deleting users, complaints, departments, or statuses) is directly stored in or retrieved from the **PostgreSQL database** through the Express REST API. There is **zero fake frontend data**.
 
 ---
 
-## 🌟 Key Features
+## 🌟 Key Project Highlights
 
-* **Dashboard & Analytics**: Live system statistics calculated directly from PostgreSQL queries (Total Users, Total Complaints, Pending, In Progress, Resolved, Rejected, Department breakdown).
-* **File New Complaints**: Interactive form with dropdowns populated dynamically from PostgreSQL database (`users` and `departments` tables).
-* **Complaint Status Tracking**: Real-time lifecycle state transitions (Pending → In Progress → Resolved / Rejected).
-* **Automatic Resolution Time**: Derived calculation computed via SQL (`resolved_date - complaint_date`).
-* **SQL JOIN Integration**: Comprehensive complaint details combining complainant details, handling department location/scope, and status remarks.
-* **User Management**: View registered students/faculty and inspect their complaint filing history.
-* **Department Assignment**: View service divisions, locations, and assigned complaint queues.
-* **Search & Filters**: Multi-criteria search by ID, user, category, or description, with status & department dropdown filters.
+- **Complete Stack**: React → Axios → Express REST API → PostgreSQL (`pg` driver)
+- **Real Database Persistence**: PostgreSQL is the single source of truth.
+- **Mandatory SQL Database Viewer (`/database`)**: Dedicated visual database explorer page in React showing live PostgreSQL records, table row counts, and schema definitions.
+- **DBMS Concepts**: Demonstrates Primary Keys, Foreign Keys (`ON DELETE CASCADE`, `ON DELETE SET NULL`), Check Constraints, SQL Aggregate queries (`COUNT`), and SQL `JOIN` queries.
+- **Status Progression & History**: Tracks complaint progress (`Pending` → `In Progress` → `Resolved` / `Rejected`) with timeline logs, remarks, resolved date, and resolution time.
 
 ---
 
 ## 🛠️ Technology Stack
 
-* **Frontend**: React (Vite), JavaScript, React Router, Axios, Lucide Icons, Vanilla CSS
-* **Backend**: Node.js, Express.js, REST API, `pg` (PostgreSQL Client Pool), `dotenv`, `cors`
-* **Database**: PostgreSQL (Relational Database)
+### Frontend
+- **Framework**: React (Vite)
+- **Language**: JavaScript (ES6+)
+- **Routing**: React Router v6
+- **HTTP Client**: Axios
+- **Icons**: Lucide React
+- **Styling**: Vanilla CSS (Custom design system, glassmorphism, responsive dashboard layout)
+
+### Backend
+- **Runtime**: Node.js
+- **Framework**: Express.js (REST API)
+- **Database Driver**: `pg` (PostgreSQL client pool)
+- **Utilities**: `dotenv`, `cors`
+
+### Database
+- **DBMS**: PostgreSQL (Relational Database)
+- **Tables**: `users`, `departments`, `complaints`, `statuses`
 
 ---
 
-## 🗄️ Database Schema & Design
-
-The database schema follows the institution's ER Diagram:
+## 📁 Project Structure
 
 ```text
-users (user_id PK, first_name, last_name, email UNIQUE, phone_number)
-   │
-   │ 1:N (Reports)
-   ▼
-complaints (complaint_id PK, user_id FK, department_id FK, status_id FK, category, description, complaint_date, resolved_date, remarks)
-   ▲                     ▲
-   │ N:1 (Assigned To)    │ N:1 (Has Status)
-   │                     │
-departments            statuses (status_id PK, status UNIQUE)
-(department_id PK, 
- department_name, 
- location, service_area)
+complaint-management-system/
+│
+├── database/
+│   ├── schema.sql           # PostgreSQL table definitions & constraints
+│   └── seed.sql             # Realistic sample seed data (5 users, 6 departments, 8 complaints, statuses)
+│
+├── backend/
+│   ├── controllers/
+│   │   ├── userController.js        # Users CRUD logic
+│   │   ├── departmentController.js  # Departments CRUD logic
+│   │   ├── complaintController.js   # Complaints CRUD & SQL JOINs logic
+│   │   ├── statusController.js      # Status history & complaint state sync logic
+│   │   ├── dashboardController.js   # Aggregate SQL metrics logic
+│   │   └── databaseController.js    # Live SQL table explorer & schema logic
+│   │
+│   ├── routes/
+│   │   ├── userRoutes.js
+│   │   ├── departmentRoutes.js
+│   │   ├── complaintRoutes.js
+│   │   ├── statusRoutes.js
+│   │   ├── dashboardRoutes.js
+│   │   └── databaseRoutes.js
+│   │
+│   ├── db/
+│   │   └── connection.js    # PostgreSQL pg.Pool connection & error handling
+│   │
+│   ├── middleware/
+│   │   └── errorHandler.js  # Express global error handler
+│   │
+│   ├── scripts/
+│   │   └── setup-db.js      # Utility script to run schema.sql & seed.sql automatically
+│   │
+│   ├── .env                 # Environment variables (Database credentials)
+│   ├── .env.example         # Template environment variables
+│   ├── package.json
+│   └── server.js            # Express server entry point (Port 5000)
+│
+├── frontend/
+│   ├── src/
+│   │   ├── components/
+│   │   │   ├── Sidebar.jsx           # Main navigation sidebar
+│   │   │   ├── Navbar.jsx            # Top bar with PostgreSQL connection badge
+│   │   │   ├── StatCard.jsx          # Reusable dashboard metric card
+│   │   │   ├── ComplaintTable.jsx    # Complaints list with status badges & actions
+│   │   │   ├── ComplaintForm.jsx     # Register / Edit complaint modal
+│   │   │   ├── UserForm.jsx          # Add / Edit user modal
+│   │   │   ├── DepartmentForm.jsx    # Add / Edit department modal
+│   │   │   └── StatusModal.jsx       # Update status modal
+│   │   │
+│   │   ├── pages/
+│   │   │   ├── Dashboard.jsx         # System dashboard with 6 stat cards & recent complaints
+│   │   │   ├── Users.jsx             # Users table & CRUD management
+│   │   │   ├── Complaints.jsx        # Complaints list with search & state/category/dept filters
+│   │   │   ├── ComplaintDetails.jsx  # Detailed view with User/Dept info & Status history timeline
+│   │   │   ├── Departments.jsx       # Departments list & CRUD management
+│   │   │   └── Database.jsx          # Live PostgreSQL SQL Tables Explorer & Schema viewer
+│   │   │
+│   │   ├── services/
+│   │   │   └── api.js                # Axios configuration and backend API calls
+│   │   │
+│   │   ├── App.jsx                   # React Router layout & page routing
+│   │   ├── main.jsx                  # React application entry point
+│   │   └── index.css                 # Custom CSS stylesheet & design tokens
+│   │
+│   ├── package.json
+│   └── vite.config.js                # Vite dev server configuration (Port 3000)
+│
+├── .gitignore
+└── README.md
 ```
 
-### Relational Tables
+---
 
-1. `users`: Stores user identity split into `first_name` and `last_name`.
-2. `departments`: Institutional departments (e.g., Computer Science, Hostel, Library, Transport, Maintenance, Administration).
-3. `statuses`: Master lookup table (`Pending`, `In Progress`, `Resolved`, `Rejected`).
-4. `complaints`: Core transaction table linking user, department, and status via Foreign Keys.
+## 📊 Database Schema & Relationships
+
+### Entity Relationship Structure
+```text
+users (1) ───────────── (N) complaints (1) ───────────── (N) statuses
+                             │
+                             │ (N)
+                             ▼
+                        departments (1)
+```
+
+1. **`users` Table**:
+   - `user_id`: `SERIAL PRIMARY KEY`
+   - `first_name`: `VARCHAR(100) NOT NULL`
+   - `last_name`: `VARCHAR(100) NOT NULL`
+   - `email`: `VARCHAR(150) UNIQUE NOT NULL`
+   - `phone_number`: `VARCHAR(20)`
+
+2. **`departments` Table**:
+   - `department_id`: `SERIAL PRIMARY KEY`
+   - `department_name`: `VARCHAR(150) NOT NULL`
+   - `location`: `VARCHAR(150)`
+   - `service_area`: `VARCHAR(200)`
+
+3. **`complaints` Table**:
+   - `complaint_id`: `SERIAL PRIMARY KEY`
+   - `user_id`: `INT NOT NULL REFERENCES users(user_id) ON DELETE CASCADE`
+   - `department_id`: `INT REFERENCES departments(department_id) ON DELETE SET NULL`
+   - `category`: `VARCHAR(100) NOT NULL`
+   - `description`: `TEXT NOT NULL`
+   - `complaint_state`: `VARCHAR(50) DEFAULT 'Pending'`
+   - `created_at`: `TIMESTAMP DEFAULT CURRENT_TIMESTAMP`
+
+4. **`statuses` Table**:
+   - `status_id`: `SERIAL PRIMARY KEY`
+   - `complaint_id`: `INT NOT NULL REFERENCES complaints(complaint_id) ON DELETE CASCADE`
+   - `status`: `VARCHAR(50) NOT NULL`
+   - `resolved_date`: `DATE`
+   - `remarks`: `TEXT`
+   - `resolution_time`: `VARCHAR(100)`
 
 ---
 
-## 🚀 API Endpoints
+## 🚀 Step-by-Step Setup & Running Guide
 
-### Complaints API
+### Step 1: Clone or Download Repository
+```bash
+git clone https://github.com/your-username/complaint-management-system.git
+cd complaint-management-system
+```
 
-* `GET /api/complaints`: Fetch all complaints using SQL JOINs (`users`, `departments`, `statuses`). Supports `?status=`, `?department_id=`, `?category=`, `?search=`.
-* `GET /api/complaints/:id`: Fetch single complaint with complete JOIN details.
-* `POST /api/complaints`: Create a new complaint (PostgreSQL `INSERT INTO complaints ... RETURNING *`).
-* `PUT /api/complaints/:id`: Update category, description, department, status, or remarks (PostgreSQL `UPDATE complaints ... RETURNING *`). Updates `resolved_date` when status becomes `Resolved`.
-* `DELETE /api/complaints/:id`: Delete a complaint (PostgreSQL `DELETE FROM complaints WHERE complaint_id = $1`).
-
-### Users API
-
-* `GET /api/users`: Fetch all users with aggregated complaint count (`LEFT JOIN complaints`).
-* `GET /api/users/:id`: Fetch user details and their complaint history array.
-* `POST /api/users`: Create a new user (PostgreSQL `INSERT INTO users ... RETURNING *`).
-
-### Department API
-
-* `GET /api/departments`: Fetch all departments with assigned complaint count.
-* `GET /api/departments/:id`: Fetch department details and assigned complaints array.
-* `POST /api/departments`: Create a new department.
-
-### Status API
-
-* `GET /api/statuses`: Fetch master statuses from `statuses` table.
-
-### Dashboard API
-
-* `GET /api/dashboard/stats`: Compute real-time aggregated metrics via SQL queries (`COUNT`, `GROUP BY`).
-
----
-
-## 💻 Setup & Installation
-
-### 1. Database Setup (PostgreSQL)
-
-If using a local PostgreSQL installation:
-
-1. Create PostgreSQL database:
-   ```sql
-   CREATE DATABASE complaint_management;
-   ```
-2. Run schema and seed scripts:
-   ```bash
-   psql -U postgres -d complaint_management -f database/schema.sql
-   psql -U postgres -d complaint_management -f database/seed.sql
-   ```
-
-3. Configure Environment Variables in `backend/.env`:
+### Step 2: Configure PostgreSQL Database
+1. Make sure **PostgreSQL** service is installed and running on your system.
+2. Open `backend/.env` and configure your database credentials:
    ```env
    PORT=5000
-   DB_HOST=localhost
-   DB_PORT=5432
-   DB_NAME=complaint_management
    DB_USER=postgres
+   DB_HOST=localhost
+   DB_NAME=complaint_management
    DB_PASSWORD=your_postgres_password
+   DB_PORT=5432
    ```
 
-*(Note: The Express backend also includes a WASM PostgreSQL engine fallback so the app will start and run out of the box even if PostgreSQL service is offline during demonstration).*
-
----
-
-### 2. Backend Server Setup
-
+### Step 3: Run Database Setup & Seeding
+Navigate to the `backend` directory and run the automated database setup script:
 ```bash
 cd backend
 npm install
-npm start
+npm run db:setup
+```
+*Note: `npm run db:setup` connects to PostgreSQL, creates the `complaint_management` database if missing, and executes both `schema.sql` and `seed.sql`.*
+
+Alternatively, execute `schema.sql` and `seed.sql` via `psql` CLI:
+```bash
+psql -U postgres -d complaint_management -f database/schema.sql
+psql -U postgres -d complaint_management -f database/seed.sql
 ```
 
-Backend REST API will run at: `http://localhost:5000`
+### Step 4: Start Backend Express REST API Server
+Inside the `backend` directory:
+```bash
+npm start
+```
+*The Express server will start on `http://localhost:5000`.*
 
----
-
-### 3. Frontend React Setup
-
+### Step 5: Start Frontend React App
+Open a new terminal window, navigate to `frontend`, install dependencies, and start Vite dev server:
 ```bash
 cd frontend
 npm install
 npm run dev
 ```
-
-Frontend application will run at: `http://localhost:3000`
+*The React app will start on `http://localhost:3000`.*
 
 ---
 
-## 🧪 DBMS Project Demonstration Workflow
+## 🔗 Key REST API Endpoints
 
-Perform this live test to demonstrate full-stack database synchronization:
+### 👤 Users APIs
+| Method | Endpoint | Description |
+| :--- | :--- | :--- |
+| `GET` | `/api/users` | Fetch all users |
+| `GET` | `/api/users/:id` | Fetch single user by ID |
+| `POST` | `/api/users` | Create new user record |
+| `PUT` | `/api/users/:id` | Update user details |
+| `DELETE` | `/api/users/:id` | Delete user record |
 
-1. **Add Complaint**:
-   * Open React UI at `http://localhost:3000/complaints`
-   * Click **"+ Add Complaint"**
-   * Fill out details and submit.
-   * **Result**: React issues `POST /api/complaints` → Express runs `INSERT INTO complaints` in PostgreSQL → Table refreshes from database.
-2. **Update Status**:
-   * Click **Edit (Pencil icon)** on any pending complaint.
-   * Change Status to **"In Progress"** or **"Resolved"** and add remarks.
-   * **Result**: React issues `PUT /api/complaints/:id` → Express executes `UPDATE complaints` → Refreshing browser retains updated status from PostgreSQL.
-3. **Delete Record**:
-   * Click **Delete (Trash icon)** and confirm.
-   * **Result**: React issues `DELETE /api/complaints/:id` → Express executes `DELETE FROM complaints` → Record is permanently removed from PostgreSQL.
+### 🏢 Department APIs
+| Method | Endpoint | Description |
+| :--- | :--- | :--- |
+| `GET` | `/api/departments` | Fetch all departments |
+| `GET` | `/api/departments/:id` | Fetch single department by ID |
+| `POST` | `/api/departments` | Create new department |
+| `PUT` | `/api/departments/:id` | Update department details |
+| `DELETE` | `/api/departments/:id` | Delete department record |
+
+### 📝 Complaint APIs
+| Method | Endpoint | Description |
+| :--- | :--- | :--- |
+| `GET` | `/api/complaints` | Fetch complaints with SQL JOINs (User Name, Dept Name) |
+| `GET` | `/api/complaints/:id` | Fetch complaint with User info, Dept info & Status history |
+| `POST` | `/api/complaints` | Register new complaint |
+| `PUT` | `/api/complaints/:id` | Update complaint details & state |
+| `DELETE` | `/api/complaints/:id` | Delete complaint record |
+
+### ⏱️ Status APIs
+| Method | Endpoint | Description |
+| :--- | :--- | :--- |
+| `GET` | `/api/complaints/:id/statuses` | Get status history for complaint |
+| `POST` | `/api/complaints/:id/statuses` | Add status update log & sync main state |
+| `PUT` | `/api/statuses/:id` | Update status log record |
+
+### 📊 Dashboard & SQL Database Explorer APIs
+| Method | Endpoint | Description |
+| :--- | :--- | :--- |
+| `GET` | `/api/dashboard` | Fetch aggregate SQL counts & recent complaints |
+| `GET` | `/api/database/tables` | Fetch overview & record counts of all SQL tables |
+| `GET` | `/api/database/users` | Fetch raw `users` SQL table records |
+| `GET` | `/api/database/departments` | Fetch raw `departments` SQL table records |
+| `GET` | `/api/database/complaints` | Fetch raw `complaints` SQL table records |
+| `GET` | `/api/database/statuses` | Fetch raw `statuses` SQL table records |
+| `GET` | `/api/database/schema/:table` | Fetch column metadata from `information_schema.columns` |
+
+---
+
+## 📤 How to Push to GitHub
+
+To upload this project to your GitHub account:
+
+1. **Initialize Git repository**:
+   ```bash
+   git init
+   git add .
+   git commit -m "Initial commit - Complete Complaint Management System (React + Express + PostgreSQL)"
+   ```
+
+2. **Create a repository on GitHub**:
+   Go to [GitHub](https://github.com/new) and create a repository named `complaint-management-system`.
+
+3. **Link remote and push**:
+   ```bash
+   git remote add origin https://github.com/YOUR_USERNAME/complaint-management-system.git
+   git branch -M main
+   git push -u origin main
+   ```
+
+---
+
+## 📜 License & College Demonstration Note
+
+This project is created for demonstration as a **DBMS & Full-Stack Web Application Project**. It highlights foundational software engineering principles, clean RESTful API design, database normalization, relational constraints, and React component modularity.

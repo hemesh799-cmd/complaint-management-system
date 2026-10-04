@@ -1,265 +1,257 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Search, Filter, RefreshCw, AlertCircle } from 'lucide-react';
-import ComplaintTable from '../components/ComplaintTable';
-import ComplaintForm from '../components/ComplaintForm';
-import ComplaintModal from '../components/ComplaintModal';
 import { 
   getComplaints, 
+  getUsers, 
+  getDepartments, 
   createComplaint, 
   updateComplaint, 
-  deleteComplaint, 
-  getDepartments, 
-  getStatuses 
+  deleteComplaint,
+  addComplaintStatus
 } from '../services/api';
+import ComplaintTable from '../components/ComplaintTable';
+import ComplaintForm from '../components/ComplaintForm';
+import StatusModal from '../components/StatusModal';
+import { Plus, Search, Filter } from 'lucide-react';
 
 const Complaints = () => {
   const [complaints, setComplaints] = useState([]);
+  const [users, setUsers] = useState([]);
   const [departments, setDepartments] = useState([]);
-  const [statuses, setStatuses] = useState([]);
-  
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  
-  // Filter States
-  const [search, setSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState('All');
-  const [deptFilter, setDeptFilter] = useState('All');
-  const [categoryFilter, setCategoryFilter] = useState('All');
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  // Modal States
+  // Search and Filter states
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedStateFilter, setSelectedStateFilter] = useState('All');
+  const [selectedCategoryFilter, setSelectedCategoryFilter] = useState('All');
+  const [selectedDeptFilter, setSelectedDeptFilter] = useState('All');
+
+  // Form & Modals state
   const [isFormOpen, setIsFormOpen] = useState(false);
-  const [editItem, setEditItem] = useState(null);
-  const [viewItem, setViewItem] = useState(null);
-  const [deleteItem, setDeleteItem] = useState(null);
-  
-  const [submitting, setSubmitting] = useState(false);
-  const [deleting, setDeleting] = useState(false);
+  const [selectedComplaint, setSelectedComplaint] = useState(null);
+  const [isStatusModalOpen, setIsStatusModalOpen] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Fetch Complaints with active filters
-  const fetchComplaintsData = async () => {
+  const fetchData = async () => {
+    setIsLoading(true);
+    setError(null);
     try {
-      setLoading(true);
-      setError('');
-      
-      const params = {};
-      if (search) params.search = search;
-      if (statusFilter !== 'All') params.status = statusFilter;
-      if (deptFilter !== 'All') params.department_id = deptFilter;
-      if (categoryFilter !== 'All') params.category = categoryFilter;
+      const [compRes, userRes, deptRes] = await Promise.all([
+        getComplaints(),
+        getUsers(),
+        getDepartments()
+      ]);
 
-      const data = await getComplaints(params);
-      setComplaints(data || []);
+      if (compRes.data.success) setComplaints(compRes.data.data || []);
+      if (userRes.data.success) setUsers(userRes.data.data || []);
+      if (deptRes.data.success) setDepartments(deptRes.data.data || []);
     } catch (err) {
-      console.error('Error fetching complaints:', err);
-      setError('Unable to load complaints from PostgreSQL server.');
+      console.error('Error loading complaints data:', err);
+      setError('Failed to fetch complaints from PostgreSQL database.');
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
   };
 
-  // Initial load: Fetch departments and statuses for filter dropdowns
   useEffect(() => {
-    Promise.all([getDepartments(), getStatuses()])
-      .then(([deptsData, statusesData]) => {
-        setDepartments(deptsData || []);
-        setStatuses(statusesData || []);
-      })
-      .catch((err) => console.error('Error loading filter options:', err));
+    fetchData();
   }, []);
 
-  // Re-fetch when search or filter values change
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      fetchComplaintsData();
-    }, 300);
-    return () => clearTimeout(timer);
-  }, [search, statusFilter, deptFilter, categoryFilter]);
+  const handleOpenRegisterModal = () => {
+    setSelectedComplaint(null);
+    setIsFormOpen(true);
+  };
 
-  // Handle Create Submit
-  const handleCreateSubmit = async (formData) => {
+  const handleOpenEditModal = (complaint) => {
+    setSelectedComplaint(complaint);
+    setIsFormOpen(true);
+  };
+
+  const handleOpenStatusModal = (complaint) => {
+    setSelectedComplaint(complaint);
+    setIsStatusModalOpen(true);
+  };
+
+  const handleSubmitComplaint = async (formData) => {
+    setIsSubmitting(true);
     try {
-      setSubmitting(true);
-      await createComplaint(formData);
+      if (selectedComplaint) {
+        await updateComplaint(selectedComplaint.complaint_id, formData);
+      } else {
+        await createComplaint(formData);
+      }
       setIsFormOpen(false);
-      fetchComplaintsData();
+      fetchData();
     } catch (err) {
-      alert(err.message || 'Unable to add complaint to PostgreSQL.');
+      console.error('Error saving complaint:', err);
+      alert('Failed to save complaint in PostgreSQL database.');
     } finally {
-      setSubmitting(false);
+      setIsSubmitting(false);
     }
   };
 
-  // Handle Edit Submit
-  const handleEditSubmit = async (formData) => {
+  const handleUpdateStatusSubmit = async (statusData) => {
+    if (!selectedComplaint) return;
+    setIsSubmitting(true);
     try {
-      setSubmitting(true);
-      await updateComplaint(editItem.complaint_id, formData);
-      setEditItem(null);
-      fetchComplaintsData();
+      await addComplaintStatus(selectedComplaint.complaint_id, statusData);
+      setIsStatusModalOpen(false);
+      fetchData();
     } catch (err) {
-      alert(err.message || 'Unable to update complaint in PostgreSQL.');
+      console.error('Error updating status:', err);
+      alert('Failed to update status record in PostgreSQL database.');
     } finally {
-      setSubmitting(false);
+      setIsSubmitting(false);
     }
   };
 
-  // Handle Delete Confirmation
-  const handleConfirmDelete = async (id) => {
+  const handleDeleteComplaint = async (complaintId) => {
+    if (!window.confirm(`Are you sure you want to delete complaint #${complaintId}?`)) {
+      return;
+    }
     try {
-      setDeleting(true);
-      await deleteComplaint(id);
-      setDeleteItem(null);
-      fetchComplaintsData();
+      await deleteComplaint(complaintId);
+      fetchData();
     } catch (err) {
-      alert(err.message || 'Unable to delete complaint from PostgreSQL.');
-    } finally {
-      setDeleting(false);
+      console.error('Error deleting complaint:', err);
+      alert('Failed to delete complaint from PostgreSQL database.');
     }
   };
 
-  // Extract unique categories for category filter
-  const uniqueCategories = Array.from(new Set(complaints.map(c => c.category).filter(Boolean)));
+  // Filter complaints dynamically
+  const filteredComplaints = complaints.filter((c) => {
+    // State Filter
+    if (selectedStateFilter !== 'All' && c.complaint_state !== selectedStateFilter) {
+      return false;
+    }
+    // Category Filter
+    if (selectedCategoryFilter !== 'All' && c.category !== selectedCategoryFilter) {
+      return false;
+    }
+    // Department Filter
+    if (selectedDeptFilter !== 'All' && String(c.department_id) !== String(selectedDeptFilter)) {
+      return false;
+    }
+    // Search Term
+    if (searchTerm.trim() !== '') {
+      const term = searchTerm.toLowerCase();
+      const matchId = String(c.complaint_id).includes(term);
+      const matchUser = c.user_name?.toLowerCase().includes(term);
+      const matchCat = c.category?.toLowerCase().includes(term);
+      const matchDesc = c.description?.toLowerCase().includes(term);
+      return matchId || matchUser || matchCat || matchDesc;
+    }
+    return true;
+  });
 
   return (
-    <div className="page-container">
-      {/* Header */}
+    <div>
       <div className="page-header">
         <div>
-          <h1 className="page-title">Complaints Registry</h1>
-          <p className="page-subtitle">Manage, assign, update, and resolve student & faculty complaints</p>
+          <h1 className="page-title">Complaint Management</h1>
+          <p className="page-subtitle">Track, assign departments, and process registered complaints</p>
         </div>
-        <div style={{ display: 'flex', gap: '0.75rem' }}>
-          <button className="btn btn-secondary" onClick={fetchComplaintsData} title="Refresh Table">
-            <RefreshCw size={16} /> Refresh
-          </button>
-          <button className="btn btn-primary" onClick={() => { setEditItem(null); setIsFormOpen(true); }}>
-            <Plus size={18} /> + Add Complaint
-          </button>
-        </div>
+        <button className="btn btn-primary" onClick={handleOpenRegisterModal}>
+          <Plus size={18} />
+          <span>Register Complaint</span>
+        </button>
       </div>
 
-      {/* Toolbar / Search & Filter Controls */}
-      <div className="toolbar">
-        <div className="search-box">
-          <Search className="search-icon" size={18} />
+      {error && <div className="alert-error">{error}</div>}
+
+      {/* Filter & Search Bar */}
+      <div className="filter-bar">
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexGrow: 1 }}>
+          <Search size={16} color="var(--text-muted)" />
           <input
             type="text"
-            placeholder="Search by ID, User, Category, Description..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            className="search-input"
+            placeholder="Search by ID, User name, Category, Description..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
           />
         </div>
 
-        <div className="filter-group">
-          {/* Status Filter */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <Filter size={16} color="var(--text-muted)" />
+
           <select
             className="select-input"
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
+            value={selectedStateFilter}
+            onChange={(e) => setSelectedStateFilter(e.target.value)}
           >
-            <option value="All">All Statuses</option>
-            {statuses.map((s) => (
-              <option key={s.status_id} value={s.status}>{s.status}</option>
-            ))}
+            <option value="All">All States</option>
+            <option value="Pending">Pending</option>
+            <option value="In Progress">In Progress</option>
+            <option value="Resolved">Resolved</option>
+            <option value="Rejected">Rejected</option>
           </select>
 
-          {/* Department Filter */}
           <select
             className="select-input"
-            value={deptFilter}
-            onChange={(e) => setDeptFilter(e.target.value)}
+            value={selectedCategoryFilter}
+            onChange={(e) => setSelectedCategoryFilter(e.target.value)}
+          >
+            <option value="All">All Categories</option>
+            <option value="Electrical">Electrical</option>
+            <option value="Maintenance">Maintenance</option>
+            <option value="Hostel">Hostel</option>
+            <option value="Transport">Transport</option>
+            <option value="IT">IT</option>
+            <option value="Academic">Academic</option>
+            <option value="Cleanliness">Cleanliness</option>
+            <option value="Other">Other</option>
+          </select>
+
+          <select
+            className="select-input"
+            value={selectedDeptFilter}
+            onChange={(e) => setSelectedDeptFilter(e.target.value)}
           >
             <option value="All">All Departments</option>
             {departments.map((d) => (
-              <option key={d.department_id} value={d.department_id}>{d.department_name}</option>
+              <option key={d.department_id} value={d.department_id}>
+                {d.department_name}
+              </option>
             ))}
           </select>
-
-          {/* Category Filter */}
-          {uniqueCategories.length > 0 && (
-            <select
-              className="select-input"
-              value={categoryFilter}
-              onChange={(e) => setCategoryFilter(e.target.value)}
-            >
-              <option value="All">All Categories</option>
-              {uniqueCategories.map((cat) => (
-                <option key={cat} value={cat}>{cat}</option>
-              ))}
-            </select>
-          )}
         </div>
       </div>
 
-      {/* Error Toast */}
-      {error && (
-        <div className="toast-alert toast-error">
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <AlertCircle size={18} />
-            <span>{error}</span>
+      {/* Complaints Table Card */}
+      <div className="card-container">
+        <div className="card-header">
+          <div className="card-title">
+            Complaints List ({filteredComplaints.length} of {complaints.length})
           </div>
-          <button className="btn btn-secondary btn-sm" onClick={fetchComplaintsData}>Retry</button>
         </div>
-      )}
 
-      {/* Complaints Table */}
-      {loading ? (
-        <div className="loading-container">
-          <div className="spinner"></div>
-          <p>Querying PostgreSQL database complaints table...</p>
-        </div>
-      ) : (
         <ComplaintTable
-          complaints={complaints}
-          onView={(item) => setViewItem(item)}
-          onEdit={(item) => setEditItem(item)}
-          onDelete={(id) => {
-            const itemToDelete = complaints.find(c => c.complaint_id === id);
-            setDeleteItem(itemToDelete);
-          }}
+          complaints={filteredComplaints}
+          onEdit={handleOpenEditModal}
+          onDelete={handleDeleteComplaint}
+          onUpdateStatus={handleOpenStatusModal}
+          isLoading={isLoading}
         />
-      )}
+      </div>
 
-      {/* Add Complaint Modal */}
       <ComplaintForm
         isOpen={isFormOpen}
         onClose={() => setIsFormOpen(false)}
-        onSubmit={handleCreateSubmit}
-        submitting={submitting}
+        onSubmit={handleSubmitComplaint}
+        initialData={selectedComplaint}
+        users={users}
+        departments={departments}
+        isSubmitting={isSubmitting}
       />
 
-      {/* Edit Complaint Modal */}
-      {editItem && (
-        <ComplaintForm
-          initialData={editItem}
-          isOpen={Boolean(editItem)}
-          onClose={() => setEditItem(null)}
-          onSubmit={handleEditSubmit}
-          submitting={submitting}
-        />
-      )}
-
-      {/* View Complaint Details Modal */}
-      {viewItem && (
-        <ComplaintModal
-          complaint={viewItem}
-          isOpen={Boolean(viewItem)}
-          onClose={() => setViewItem(null)}
-          mode="view"
-        />
-      )}
-
-      {/* Delete Confirmation Modal */}
-      {deleteItem && (
-        <ComplaintModal
-          complaint={deleteItem}
-          isOpen={Boolean(deleteItem)}
-          onClose={() => setDeleteItem(null)}
-          mode="delete"
-          onConfirmDelete={handleConfirmDelete}
-          deleting={deleting}
-        />
-      )}
+      <StatusModal
+        isOpen={isStatusModalOpen}
+        onClose={() => setIsStatusModalOpen(false)}
+        onSubmit={handleUpdateStatusSubmit}
+        complaint={selectedComplaint}
+        isSubmitting={isSubmitting}
+      />
     </div>
   );
 };

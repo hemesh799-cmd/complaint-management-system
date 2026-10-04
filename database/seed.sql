@@ -1,61 +1,68 @@
--- Online Complaint Management System
--- Seed Data for PostgreSQL
+-- =========================================================
+-- Seed Data for Complaint Management System
+-- Database: PostgreSQL
+-- =========================================================
 
 -- Clear existing data
-TRUNCATE TABLE complaints, statuses, departments, users RESTART IDENTITY CASCADE;
+TRUNCATE TABLE statuses, complaints, departments, users RESTART IDENTITY CASCADE;
 
--- Insert Sample Users
+-- 1. Insert Users
 INSERT INTO users (first_name, last_name, email, phone_number) VALUES
-('Arun', 'Kumar', 'arun.kumar@college.edu', '9876543210'),
-('Priya', 'Sharma', 'priya.sharma@college.edu', '9876543211'),
-('Rahul', 'Raj', 'rahul.raj@college.edu', '9876543212'),
-('Divya', 'S', 'divya.s@college.edu', '9876543213'),
-('Karthik', 'M', 'karthik.m@college.edu', '9876543214');
+('Arneesh', 'M', 'arneesh@example.com', '9876543210'),
+('Ashwin', 'S', 'ashwin@example.com', '9876543211'),
+('Hemesh', 'S V', 'hemesh@example.com', '9876543212'),
+('Rahul', 'K', 'rahul@example.com', '9876543213'),
+('Priya', 'R', 'priya@example.com', '9876543214');
 
--- Insert Sample Departments
+-- 2. Insert Departments
 INSERT INTO departments (department_name, location, service_area) VALUES
-('Computer Science', 'Academic Block A, 2nd Floor', 'Lab Infrastructure & Software Systems'),
-('Administration', 'Main Building, Ground Floor', 'Student Records & Fee Verification'),
-('Library', 'Central Library Building', 'Book Issue, Digital Library & Quiet Zones'),
-('Hostel', 'Hostel Block 3, Office', 'Student Accommodation & Mess Facilities'),
-('Maintenance', 'Utility Wing, Gate 2', 'Electrical, Plumbing & Civil Repairs'),
-('Transport', 'Bus Parking Bay, Gate 1', 'College Bus Routes & Fleet Management');
+('Electrical Department', 'Block A - Room 101', 'Electrical systems & power supply'),
+('Maintenance Department', 'Block B - Room 104', 'Civil repairs & plumbing'),
+('Transport Department', 'Main Gate Office', 'Bus routes & vehicle maintenance'),
+('IT Department', 'Tech Park - 2nd Floor', 'Network, Wi-Fi & computer labs'),
+('Hostel Department', 'Hostel Block C', 'Hostel amenities & room allocation'),
+('Academic Department', 'Admin Building - Room 202', 'Course registration & exam cell');
 
--- Insert Sample Statuses
-INSERT INTO statuses (status) VALUES
-('Pending'),
-('In Progress'),
-('Resolved'),
-('Rejected');
+-- 3. Insert Complaints
+INSERT INTO complaints (user_id, department_id, category, description, complaint_state, created_at) VALUES
+(1, 1, 'Electrical', 'Corridor lights are not working on the 2nd floor of Block A', 'Resolved', CURRENT_TIMESTAMP - INTERVAL '5 days'),
+(2, 5, 'Hostel', 'Water supply problem in Hostel Block C, 3rd floor restrooms', 'In Progress', CURRENT_TIMESTAMP - INTERVAL '4 days'),
+(3, 3, 'Transport', 'College bus Route 12 arrives late consistently at the North stop', 'Pending', CURRENT_TIMESTAMP - INTERVAL '3 days'),
+(3, 4, 'IT', 'Wi-Fi connection is unavailable in Computer Lab 3', 'Resolved', CURRENT_TIMESTAMP - INTERVAL '2 days'),
+(4, 2, 'Maintenance', 'Classroom 102 ceiling fan is making loud noise', 'In Progress', CURRENT_TIMESTAMP - INTERVAL '2 days'),
+(5, 6, 'Academic', 'Library portal login credentials error for final year students', 'Pending', CURRENT_TIMESTAMP - INTERVAL '1 day'),
+(1, 4, 'IT', 'Projector in Seminar Hall 1 HDMI port is damaged', 'Pending', CURRENT_TIMESTAMP - INTERVAL '12 hours'),
+(2, 1, 'Electrical', 'AC unit leaking water in the Central Library reading room', 'In Progress', CURRENT_TIMESTAMP - INTERVAL '6 hours');
 
--- Insert Sample Complaints
-INSERT INTO complaints (user_id, department_id, status_id, category, description, complaint_date, resolved_date, remarks) VALUES
--- 1. Pending Hostel complaint
-(1, 4, 1, 'Hostel', 'Water supply interruption in Hostel Block A 3rd floor washrooms during morning hours.', CURRENT_TIMESTAMP - INTERVAL '2 days', NULL, NULL),
+-- 4. Insert Status History Records
+INSERT INTO statuses (complaint_id, status, resolved_date, remarks, resolution_time) VALUES
+-- Complaint 1: Resolved
+(1, 'Pending', NULL, 'Complaint registered by student', NULL),
+(1, 'In Progress', NULL, 'Electrician assigned to inspect corridor wiring', NULL),
+(1, 'Resolved', '2026-10-01', 'Electrical issue repaired successfully. Replaced blown fuse and bulb.', '2 days'),
 
--- 2. In Progress Maintenance complaint
-(2, 5, 2, 'Electrical', 'Projector overhead display flickers continuously in Seminar Hall 102 during lectures.', CURRENT_TIMESTAMP - INTERVAL '4 days', NULL, 'Technician dispatched to replace HDMI display cable.'),
+-- Complaint 2: In Progress
+(2, 'Pending', NULL, 'Complaint registered by student', NULL),
+(2, 'In Progress', NULL, 'Plumber dispatched to check water pump pressure', NULL),
 
--- 3. Resolved CS complaint
-(3, 1, 3, 'Lab Equipment', 'Computer CS-LAB-24 operating system crashes on boot with blue screen error.', CURRENT_TIMESTAMP - INTERVAL '6 days', CURRENT_TIMESTAMP - INTERVAL '1 day', 'Re-installed Windows image and upgraded RAM stick. Verified working.'),
+-- Complaint 3: Pending
+(3, 'Pending', NULL, 'Complaint registered by student. Forwarded to transport manager.', NULL),
 
--- 4. Pending Administration complaint
-(4, 2, 1, 'Fee Certificate', 'Delay in issuing tuition fee breakdown certificate required for scholarship application.', CURRENT_TIMESTAMP - INTERVAL '1 day', NULL, NULL),
+-- Complaint 4: Resolved
+(4, 'Pending', NULL, 'Complaint registered by student', NULL),
+(4, 'In Progress', NULL, 'Network administrator inspecting router AP-03', NULL),
+(4, 'Resolved', '2026-10-03', 'Access point rebooted and firmware updated. Wi-Fi restored.', '1 day'),
 
--- 5. In Progress Library complaint
-(5, 3, 2, 'Digital Library', 'Wi-Fi connectivity drops frequently in the 2nd floor research journal reading section.', CURRENT_TIMESTAMP - INTERVAL '3 days', NULL, 'IT department investigating router access point load balancer.'),
+-- Complaint 5: In Progress
+(5, 'Pending', NULL, 'Complaint registered by student', NULL),
+(5, 'In Progress', NULL, 'Maintenance worker ordered replacement bearing for fan', NULL),
 
--- 6. Resolved Transport complaint
-(1, 6, 3, 'Transport', 'College Bus Route No. 12 arrived 25 minutes late at City Junction pickup point.', CURRENT_TIMESTAMP - INTERVAL '7 days', CURRENT_TIMESTAMP - INTERVAL '5 days', 'Bus driver counseled; alternate backup bus assigned for Route 12.'),
+-- Complaint 6: Pending
+(6, 'Pending', NULL, 'Complaint registered by student. Queued for IT admin review.', NULL),
 
--- 7. Rejected Maintenance complaint
-(2, 5, 4, 'Infrastructure', 'Requesting air conditioner installation in open cafeteria seating area.', CURRENT_TIMESTAMP - INTERVAL '10 days', CURRENT_TIMESTAMP - INTERVAL '9 days', 'Rejected: Open cafeteria is non-air-conditioned by institutional architectural policy.'),
+-- Complaint 7: Pending
+(7, 'Pending', NULL, 'Complaint registered by student. Inspection scheduled.', NULL),
 
--- 8. Resolved Hostel complaint
-(3, 4, 3, 'Mess Food', 'Quality of evening tea and snacks served at Boys Hostel Mess on Tuesday was sub-par.', CURRENT_TIMESTAMP - INTERVAL '5 days', CURRENT_TIMESTAMP - INTERVAL '2 days', 'Mess warden inspected food inventory; vendor reprimanded.'),
-
--- 9. In Progress CS complaint
-(4, 1, 2, 'Software', 'Compiler license key expired on Matlab installation in Data Science Laboratory.', CURRENT_TIMESTAMP - INTERVAL '2 days', NULL, 'License renewal request submitted to Dean of Academics.'),
-
--- 10. Pending Transport complaint
-(5, 6, 1, 'Transport Pass', 'Smart card RFID tag reader failing on Bus No. 4 entrance gate.', CURRENT_TIMESTAMP - INTERVAL '12 hours', NULL, NULL);
+-- Complaint 8: In Progress
+(8, 'Pending', NULL, 'Complaint registered by student', NULL),
+(8, 'In Progress', NULL, 'HVAC technician checking drainage pipe of AC unit', NULL);

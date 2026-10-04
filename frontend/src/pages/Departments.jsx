@@ -1,269 +1,176 @@
 import React, { useState, useEffect } from 'react';
-import { Building2, Plus, MapPin, Layers, FileText, AlertCircle, X } from 'lucide-react';
-import { getDepartments, getDepartmentById, createDepartment } from '../services/api';
+import { getDepartments, createDepartment, updateDepartment, deleteDepartment } from '../services/api';
+import DepartmentForm from '../components/DepartmentForm';
+import { Plus, Edit2, Trash2, Building2 } from 'lucide-react';
 
 const Departments = () => {
   const [departments, setDepartments] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  // Add Department Modal
-  const [isAddOpen, setIsAddOpen] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
-  const [formData, setFormData] = useState({
-    department_name: '',
-    location: '',
-    service_area: ''
-  });
+  const [isFormOpen, setIsFormOpen] = useState(false);
+  const [selectedDept, setSelectedDept] = useState(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Selected Department Modal
-  const [selectedDeptHistory, setSelectedDeptHistory] = useState(null);
-
-  const fetchDepts = async () => {
+  const fetchDepartments = async () => {
+    setIsLoading(true);
+    setError(null);
     try {
-      setLoading(true);
-      setError('');
-      const data = await getDepartments();
-      setDepartments(data || []);
+      const res = await getDepartments();
+      if (res.data.success) {
+        setDepartments(res.data.data || []);
+      }
     } catch (err) {
       console.error('Error fetching departments:', err);
-      setError('Failed to load departments from PostgreSQL database.');
+      setError('Failed to fetch departments from PostgreSQL database.');
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchDepts();
+    fetchDepartments();
   }, []);
 
-  const handleAddSubmit = async (e) => {
-    e.preventDefault();
-    if (!formData.department_name || !formData.location || !formData.service_area) {
-      alert('All fields are required.');
-      return;
-    }
+  const handleOpenAddModal = () => {
+    setSelectedDept(null);
+    setIsFormOpen(true);
+  };
 
+  const handleOpenEditModal = (dept) => {
+    setSelectedDept(dept);
+    setIsFormOpen(true);
+  };
+
+  const handleSubmitDepartment = async (formData) => {
+    setIsSubmitting(true);
     try {
-      setSubmitting(true);
-      await createDepartment(formData);
-      setIsAddOpen(false);
-      setFormData({ department_name: '', location: '', service_area: '' });
-      fetchDepts();
+      if (selectedDept) {
+        await updateDepartment(selectedDept.department_id, formData);
+      } else {
+        await createDepartment(formData);
+      }
+      setIsFormOpen(false);
+      fetchDepartments();
     } catch (err) {
-      alert(err.message || 'Failed to create department.');
+      console.error('Error saving department:', err);
+      alert('Failed to save department in PostgreSQL database.');
     } finally {
-      setSubmitting(false);
+      setIsSubmitting(false);
     }
   };
 
-  const handleDeptClick = async (id) => {
+  const handleDeleteDepartment = async (deptId) => {
+    if (!window.confirm(`Are you sure you want to delete department #${deptId}? Complaints assigned to this department will become unassigned.`)) {
+      return;
+    }
     try {
-      const data = await getDepartmentById(id);
-      setSelectedDeptHistory(data);
+      await deleteDepartment(deptId);
+      fetchDepartments();
     } catch (err) {
-      alert('Failed to load department complaints.');
+      console.error('Error deleting department:', err);
+      alert('Failed to delete department from PostgreSQL database.');
     }
   };
 
   return (
-    <div className="page-container">
-      {/* Header */}
+    <div>
       <div className="page-header">
         <div>
           <h1 className="page-title">College Departments</h1>
-          <p className="page-subtitle">Institutional service divisions and complaint handling units</p>
+          <p className="page-subtitle">Manage campus complaint-handling departments and service areas</p>
         </div>
-        <button className="btn btn-primary" onClick={() => setIsAddOpen(true)}>
-          <Plus size={18} /> + Add Department
+        <button className="btn btn-primary" onClick={handleOpenAddModal}>
+          <Plus size={18} />
+          <span>Add Department</span>
         </button>
       </div>
 
-      {error && (
-        <div className="toast-alert toast-error">
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <AlertCircle size={18} />
-            <span>{error}</span>
-          </div>
-          <button className="btn btn-secondary btn-sm" onClick={fetchDepts}>Retry</button>
-        </div>
-      )}
+      {error && <div className="alert-error">{error}</div>}
 
-      {loading ? (
-        <div className="loading-container">
-          <div className="spinner"></div>
-          <p>Querying PostgreSQL departments table...</p>
-        </div>
-      ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '1.25rem' }}>
-          {departments.map((dept) => (
-            <div key={dept.department_id} className="card" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
-              <div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.85rem' }}>
-                  <div style={{ background: '#eff6ff', color: '#3b82f6', width: '42px', height: '42px', borderRadius: 'var(--radius-md)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <Building2 size={22} />
-                  </div>
-                  <span style={{
-                    backgroundColor: '#f1f5f9',
-                    color: 'var(--text-secondary)',
-                    fontWeight: 700,
-                    fontSize: '0.8rem',
-                    padding: '0.25rem 0.65rem',
-                    borderRadius: 'var(--radius-full)'
-                  }}>
-                    {dept.assigned_complaints} Assigned
-                  </span>
-                </div>
-
-                <h3 style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '0.35rem' }}>
-                  {dept.department_name}
-                </h3>
-
-                <p style={{ fontSize: '0.825rem', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '0.35rem', marginBottom: '0.35rem' }}>
-                  <MapPin size={14} color="#64748b" /> {dept.location}
-                </p>
-
-                <p style={{ fontSize: '0.825rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '0.35rem', marginBottom: '1.25rem' }}>
-                  <Layers size={14} color="#94a3b8" /> Scope: {dept.service_area}
-                </p>
-              </div>
-
-              <button 
-                className="btn btn-secondary" 
-                style={{ width: '100%', fontSize: '0.825rem' }}
-                onClick={() => handleDeptClick(dept.department_id)}
-              >
-                <FileText size={15} /> View Department Complaints
-              </button>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* Add Department Modal */}
-      {isAddOpen && (
-        <div className="modal-overlay">
-          <div className="modal-content" style={{ maxWidth: '500px' }}>
-            <div className="modal-header">
-              <h3 className="modal-title">+ Add Department</h3>
-              <button className="btn-icon" onClick={() => setIsAddOpen(false)}>
-                <X size={20} />
-              </button>
-            </div>
-
-            <form onSubmit={handleAddSubmit}>
-              <div className="form-group">
-                <label className="form-label">Department Name <span className="required">*</span></label>
-                <input
-                  type="text"
-                  className="text-input"
-                  placeholder="e.g. Computer Science, Transport"
-                  value={formData.department_name}
-                  onChange={(e) => setFormData({ ...formData, department_name: e.target.value })}
-                  required
-                />
-              </div>
-
-              <div className="form-group">
-                <label className="form-label">Location <span className="required">*</span></label>
-                <input
-                  type="text"
-                  className="text-input"
-                  placeholder="e.g. Academic Block A, 2nd Floor"
-                  value={formData.location}
-                  onChange={(e) => setFormData({ ...formData, location: e.target.value })}
-                  required
-                />
-              </div>
-
-              <div className="form-group">
-                <label className="form-label">Service Area <span className="required">*</span></label>
-                <input
-                  type="text"
-                  className="text-input"
-                  placeholder="e.g. Lab Infrastructure & Software"
-                  value={formData.service_area}
-                  onChange={(e) => setFormData({ ...formData, service_area: e.target.value })}
-                  required
-                />
-              </div>
-
-              <div className="modal-footer">
-                <button type="button" className="btn btn-secondary" onClick={() => setIsAddOpen(false)} disabled={submitting}>
-                  Cancel
-                </button>
-                <button type="submit" className="btn btn-primary" disabled={submitting}>
-                  {submitting ? 'Saving to Database...' : 'Create Department'}
-                </button>
-              </div>
-            </form>
+      <div className="card-container">
+        <div className="card-header">
+          <div className="card-title">All Departments ({departments.length})</div>
+          <div className="db-status-badge" style={{ fontSize: '0.74rem' }}>
+            <Building2 size={12} />
+            <span>departments Table</span>
           </div>
         </div>
-      )}
 
-      {/* Department Assigned Complaints History Modal */}
-      {selectedDeptHistory && (
-        <div className="modal-overlay">
-          <div className="modal-content" style={{ maxWidth: '750px' }}>
-            <div className="modal-header">
-              <div>
-                <h3 className="modal-title">{selectedDeptHistory.department_name}</h3>
-                <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                  Location: {selectedDeptHistory.location}
-                </span>
-              </div>
-              <button className="btn-icon" onClick={() => setSelectedDeptHistory(null)}>
-                <X size={20} />
-              </button>
-            </div>
-
-            <h4 style={{ fontSize: '0.95rem', fontWeight: 700, marginBottom: '0.85rem' }}>
-              Assigned Complaints ({selectedDeptHistory.complaints?.length || 0})
-            </h4>
-
-            {selectedDeptHistory.complaints?.length === 0 ? (
-              <p style={{ color: 'var(--text-secondary)', padding: '1rem 0' }}>No complaints assigned to this department.</p>
-            ) : (
-              <div className="table-container" style={{ border: '1px solid var(--border-color)', maxHeight: '350px', overflowY: 'auto' }}>
-                <table className="table">
-                  <thead>
-                    <tr>
-                      <th>ID</th>
-                      <th>User</th>
-                      <th>Category</th>
-                      <th>Status</th>
-                      <th>Description</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {selectedDeptHistory.complaints.map((c) => (
-                      <tr key={c.complaint_id}>
-                        <td><span style={{ fontWeight: 700, color: 'var(--accent-primary)' }}>#{c.complaint_id}</span></td>
-                        <td>{c.user_name}</td>
-                        <td><span style={{ fontWeight: 500 }}>{c.category}</span></td>
-                        <td>
-                          <span className={`badge badge-${c.status.toLowerCase().replace(/\s+/g, '-')}`}>
-                            {c.status}
-                          </span>
-                        </td>
-                        <td style={{ maxWidth: '200px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                          {c.description}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-
-            <div className="modal-footer">
-              <button className="btn btn-secondary" onClick={() => setSelectedDeptHistory(null)}>
-                Close
-              </button>
-            </div>
+        {isLoading ? (
+          <div className="state-container">
+            <div className="spinner"></div>
+            <div>Loading departments from PostgreSQL database...</div>
           </div>
-        </div>
-      )}
+        ) : departments.length === 0 ? (
+          <div className="state-container">
+            <div style={{ fontSize: '1.1rem', fontWeight: 600 }}>No departments found in database</div>
+            <div>Click "+ Add Department" to insert a department record into PostgreSQL.</div>
+          </div>
+        ) : (
+          <div className="table-wrapper">
+            <table className="custom-table">
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Department Name</th>
+                  <th>Campus Location</th>
+                  <th>Service Area / Responsibilities</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {departments.map((d) => (
+                  <tr key={d.department_id}>
+                    <td style={{ fontWeight: 600 }}>#{d.department_id}</td>
+                    <td style={{ fontWeight: 600, color: 'var(--primary)' }}>
+                      {d.department_name}
+                    </td>
+                    <td>{d.location || 'N/A'}</td>
+                    <td style={{ maxWidth: '300px' }}>
+                      <div style={{ 
+                        overflow: 'hidden', 
+                        textOverflow: 'ellipsis', 
+                        whiteSpace: 'nowrap' 
+                      }} title={d.service_area}>
+                        {d.service_area || 'General Services'}
+                      </div>
+                    </td>
+                    <td>
+                      <div className="action-buttons">
+                        <button
+                          className="btn btn-outline btn-sm"
+                          onClick={() => handleOpenEditModal(d)}
+                          title="Edit Department"
+                        >
+                          <Edit2 size={14} />
+                          <span>Edit</span>
+                        </button>
+                        <button
+                          className="btn btn-danger btn-sm"
+                          onClick={() => handleDeleteDepartment(d.department_id)}
+                          title="Delete Department"
+                        >
+                          <Trash2 size={14} />
+                          <span>Delete</span>
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      <DepartmentForm
+        isOpen={isFormOpen}
+        onClose={() => setIsFormOpen(false)}
+        onSubmit={handleSubmitDepartment}
+        initialData={selectedDept}
+        isSubmitting={isSubmitting}
+      />
     </div>
   );
 };

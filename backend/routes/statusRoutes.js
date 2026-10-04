@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
-const statusController = require('../controllers/statusController');
+const { updateStatus } = require('../controllers/statusController');
 
-router.get('/', statusController.getAllStatuses);
+router.put('/:id', updateStatus);
 
 module.exports = router;

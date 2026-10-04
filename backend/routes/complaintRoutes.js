@@ -1,11 +1,27 @@
 const express = require('express');
 const router = express.Router();
-const complaintController = require('../controllers/complaintController');
+const {
+  getComplaints,
+  getComplaintById,
+  createComplaint,
+  updateComplaint,
+  deleteComplaint,
+} = require('../controllers/complaintController');
 
-router.get('/', complaintController.getAllComplaints);
-router.get('/:id', complaintController.getComplaintById);
-router.post('/', complaintController.createComplaint);
-router.put('/:id', complaintController.updateComplaint);
-router.delete('/:id', complaintController.deleteComplaint);
+const {
+  getStatusesByComplaintId,
+  addStatus,
+} = require('../controllers/statusController');
+
+// Complaint CRUD routes
+router.get('/', getComplaints);
+router.get('/:id', getComplaintById);
+router.post('/', createComplaint);
+router.put('/:id', updateComplaint);
+router.delete('/:id', deleteComplaint);
+
+// Status sub-routes for complaints
+router.get('/:id/statuses', getStatusesByComplaintId);
+router.post('/:id/statuses', addStatus);
 
 module.exports = router;

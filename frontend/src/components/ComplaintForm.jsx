@@ -1,60 +1,55 @@
 import React, { useState, useEffect } from 'react';
-import { X, Save, AlertCircle } from 'lucide-react';
-import { getUsers, getDepartments, getStatuses } from '../services/api';
+import { X } from 'lucide-react';
 
-const ComplaintForm = ({ initialData, isOpen, onClose, onSubmit, submitting }) => {
-  const [usersList, setUsersList] = useState([]);
-  const [departmentsList, setDepartmentsList] = useState([]);
-  const [statusesList, setStatusesList] = useState([]);
-
+const ComplaintForm = ({ 
+  isOpen, 
+  onClose, 
+  onSubmit, 
+  initialData, 
+  users = [], 
+  departments = [], 
+  isSubmitting 
+}) => {
   const [formData, setFormData] = useState({
     user_id: '',
     department_id: '',
-    status_id: '1', // Default Pending
-    category: '',
+    category: 'Electrical',
     description: '',
-    remarks: ''
+    complaint_state: 'Pending',
   });
 
-  const [errorMsg, setErrorMsg] = useState('');
+  const categories = [
+    'Electrical',
+    'Maintenance',
+    'Hostel',
+    'Transport',
+    'IT',
+    'Academic',
+    'Cleanliness',
+    'Other',
+  ];
 
-  const isEditMode = Boolean(initialData && initialData.complaint_id);
-
-  // Fetch Dropdown options from PostgreSQL API
   useEffect(() => {
-    if (isOpen) {
-      Promise.all([getUsers(), getDepartments(), getStatuses()])
-        .then(([usersData, deptsData, statusesData]) => {
-          setUsersList(usersData || []);
-          setDepartmentsList(deptsData || []);
-          setStatusesList(statusesData || []);
-
-          if (isEditMode) {
-            setFormData({
-              user_id: initialData.user_id || '',
-              department_id: initialData.department_id || '',
-              status_id: initialData.status_id || '1',
-              category: initialData.category || '',
-              description: initialData.description || '',
-              remarks: initialData.remarks || ''
-            });
-          } else {
-            setFormData({
-              user_id: usersData && usersData.length > 0 ? usersData[0].user_id : '',
-              department_id: deptsData && deptsData.length > 0 ? deptsData[0].department_id : '',
-              status_id: '1',
-              category: '',
-              description: '',
-              remarks: ''
-            });
-          }
-        })
-        .catch((err) => {
-          console.error('Error fetching form dropdown options:', err);
-          setErrorMsg('Failed to load users/departments/statuses from database server.');
-        });
+    if (initialData) {
+      setFormData({
+        user_id: initialData.user_id || '',
+        department_id: initialData.department_id || '',
+        category: initialData.category || 'Electrical',
+        description: initialData.description || '',
+        complaint_state: initialData.complaint_state || 'Pending',
+      });
+    } else {
+      setFormData({
+        user_id: users.length > 0 ? users[0].user_id : '',
+        department_id: departments.length > 0 ? departments[0].department_id : '',
+        category: 'Electrical',
+        description: '',
+        complaint_state: 'Pending',
+      });
     }
-  }, [isOpen, initialData, isEditMode]);
+  }, [initialData, users, departments, isOpen]);
+
+  if (!isOpen) return null;
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -63,160 +58,113 @@ const ComplaintForm = ({ initialData, isOpen, onClose, onSubmit, submitting }) =
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    setErrorMsg('');
-
-    if (!formData.category.trim()) {
-      setErrorMsg('Category is required.');
-      return;
-    }
-    if (!formData.description.trim()) {
-      setErrorMsg('Description is required.');
-      return;
-    }
-    if (!formData.user_id) {
-      setErrorMsg('Please select a user.');
-      return;
-    }
-    if (!formData.department_id) {
-      setErrorMsg('Please select a department.');
-      return;
-    }
-
     onSubmit(formData);
   };
-
-  if (!isOpen) return null;
 
   return (
     <div className="modal-overlay">
       <div className="modal-content">
         <div className="modal-header">
-          <h3 className="modal-title">
-            {isEditMode ? `Edit Complaint #${initialData.complaint_id}` : '+ File New Complaint'}
-          </h3>
-          <button className="btn-icon" onClick={onClose} aria-label="Close modal">
+          <div className="modal-title">
+            {initialData ? `Edit Complaint #${initialData.complaint_id}` : 'Register New Complaint'}
+          </div>
+          <button className="modal-close" onClick={onClose}>
             <X size={20} />
           </button>
         </div>
 
-        {errorMsg && (
-          <div className="toast-alert toast-error">
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              <AlertCircle size={18} />
-              <span>{errorMsg}</span>
-            </div>
-          </div>
-        )}
-
         <form onSubmit={handleSubmit}>
-          {/* User Selection */}
-          <div className="form-group">
-            <label className="form-label">
-              User / Student <span className="required">*</span>
-            </label>
-            <select
-              name="user_id"
-              className="select-input"
-              value={formData.user_id}
-              onChange={handleChange}
-              disabled={isEditMode}
-            >
-              {usersList.map((u) => (
-                <option key={u.user_id} value={u.user_id}>
-                  {u.name || `${u.first_name} ${u.last_name}`} ({u.email})
-                </option>
-              ))}
-            </select>
-          </div>
+          <div className="modal-body">
+            {!initialData && (
+              <div className="form-group">
+                <label className="form-label">Select Reporting User *</label>
+                <select
+                  name="user_id"
+                  className="select-input"
+                  value={formData.user_id}
+                  onChange={handleChange}
+                  required
+                >
+                  <option value="" disabled>-- Select User --</option>
+                  {users.map((u) => (
+                    <option key={u.user_id} value={u.user_id}>
+                      {u.first_name} {u.last_name} ({u.email})
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
 
-          {/* Department Selection */}
-          <div className="form-group">
-            <label className="form-label">
-              Assigned Department <span className="required">*</span>
-            </label>
-            <select
-              name="department_id"
-              className="select-input"
-              value={formData.department_id}
-              onChange={handleChange}
-            >
-              {departmentsList.map((d) => (
-                <option key={d.department_id} value={d.department_id}>
-                  {d.department_name} — {d.location}
-                </option>
-              ))}
-            </select>
-          </div>
+            <div className="form-group">
+              <label className="form-label">Assign Department</label>
+              <select
+                name="department_id"
+                className="select-input"
+                value={formData.department_id}
+                onChange={handleChange}
+              >
+                <option value="">-- Unassigned --</option>
+                {departments.map((d) => (
+                  <option key={d.department_id} value={d.department_id}>
+                    {d.department_name} ({d.location || 'Main Building'})
+                  </option>
+                ))}
+              </select>
+            </div>
 
-          {/* Category */}
-          <div className="form-group">
-            <label className="form-label">
-              Category <span className="required">*</span>
-            </label>
-            <input
-              type="text"
-              name="category"
-              className="text-input"
-              placeholder="e.g. Hostel, Electrical, Software, Transport, Mess"
-              value={formData.category}
-              onChange={handleChange}
-            />
-          </div>
+            <div className="form-group">
+              <label className="form-label">Complaint Category *</label>
+              <select
+                name="category"
+                className="select-input"
+                value={formData.category}
+                onChange={handleChange}
+                required
+              >
+                {categories.map((cat) => (
+                  <option key={cat} value={cat}>
+                    {cat}
+                  </option>
+                ))}
+              </select>
+            </div>
 
-          {/* Status Selection */}
-          <div className="form-group">
-            <label className="form-label">
-              Complaint Status <span className="required">*</span>
-            </label>
-            <select
-              name="status_id"
-              className="select-input"
-              value={formData.status_id}
-              onChange={handleChange}
-            >
-              {statusesList.map((s) => (
-                <option key={s.status_id} value={s.status_id}>
-                  {s.status}
-                </option>
-              ))}
-            </select>
-          </div>
+            {initialData && (
+              <div className="form-group">
+                <label className="form-label">Complaint State</label>
+                <select
+                  name="complaint_state"
+                  className="select-input"
+                  value={formData.complaint_state}
+                  onChange={handleChange}
+                >
+                  <option value="Pending">Pending</option>
+                  <option value="In Progress">In Progress</option>
+                  <option value="Resolved">Resolved</option>
+                  <option value="Rejected">Rejected</option>
+                </select>
+              </div>
+            )}
 
-          {/* Description */}
-          <div className="form-group">
-            <label className="form-label">
-              Description <span className="required">*</span>
-            </label>
-            <textarea
-              name="description"
-              className="textarea-input"
-              rows={4}
-              placeholder="Provide exact issue details, location, and observed problem..."
-              value={formData.description}
-              onChange={handleChange}
-            />
-          </div>
-
-          {/* Remarks (Only in edit mode or when status changed) */}
-          <div className="form-group">
-            <label className="form-label">Resolution Remarks / Staff Notes</label>
-            <textarea
-              name="remarks"
-              className="textarea-input"
-              rows={2}
-              placeholder="Add resolution details or action taken..."
-              value={formData.remarks}
-              onChange={handleChange}
-            />
+            <div className="form-group">
+              <label className="form-label">Detailed Description *</label>
+              <textarea
+                name="description"
+                className="form-textarea"
+                placeholder="Describe the complaint issue in detail..."
+                value={formData.description}
+                onChange={handleChange}
+                required
+              />
+            </div>
           </div>
 
           <div className="modal-footer">
-            <button type="button" className="btn btn-secondary" onClick={onClose} disabled={submitting}>
+            <button type="button" className="btn btn-secondary" onClick={onClose} disabled={isSubmitting}>
               Cancel
             </button>
-            <button type="submit" className="btn btn-primary" disabled={submitting}>
-              <Save size={18} />
-              {submitting ? 'Saving to Database...' : isEditMode ? 'Update Complaint' : 'Submit Complaint'}
+            <button type="submit" className="btn btn-primary" disabled={isSubmitting}>
+              {isSubmitting ? 'Saving to PostgreSQL...' : initialData ? 'Update Complaint' : 'Submit Complaint'}
             </button>
           </div>
         </form>
